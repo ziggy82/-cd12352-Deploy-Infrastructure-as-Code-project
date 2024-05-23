@@ -1,9 +1,8 @@
-
 Parameters:
   ExerciseName:
     Type: String
     Description: Tag name for our resources
-    Default: udacity-lb-exercise
+
   AsgDesiredCapacity:
     Type: String
     Description: Desired capacity for the fleet of instances
@@ -15,17 +14,47 @@ Resources:
     Properties:
       GroupDescription: !Ref ExerciseName
       VpcId:
-        Fn::ImportValue: !Sub "${ExerciseName}-vpc-id"
+        Fn::ImportValue: !Sub "${ExerciseName}-VPCID"
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 3000
-          ToPort: 3000
+          FromPort: 80
+          ToPort: 80
           SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
   LaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
       LaunchTemplateData:
-        ImageId: ami-0557a15b87f6559cf
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            apt-get update -y
+            sudo apt-get install nginx -y
+            service nginx start
+            # Define the directory where the index.html will be placed
+            WEB_DIR="/var/www/html"
+
+            # Create a basic index.html file
+            cat <<EOF > index.html
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>It works! Udagram, Udacity</title>
+            </head>
+            <body>
+              <h1>It works! Udagram, Udacity</h1>
+              <p>This website is hosted on Nginx.</p>
+            </body>
+            </html>
+            EOF
+
+            # Copy index.html to the Nginx web directory
+            sudo rm -rf $WEB_DIR/index.html
+            sudo cp index.html $WEB_DIR
+
+            # Reload Nginx to apply changes
+            sudo systemctl reload nginx
+            
+        ImageId: ami-03e9149278a6f457c
         SecurityGroupIds:
           - !Ref SecurityGroup
         InstanceType: t2.micro
@@ -37,7 +66,7 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
       VPCZoneIdentifier:
-        - Fn::ImportValue: !Sub "${ExerciseName}-private-subnets"
+        - Fn::ImportValue: !Sub "${ExerciseName}-PRIV-NETS"
       LaunchTemplate:
         LaunchTemplateId: !Ref LaunchTemplate
         Version: !GetAtt LaunchTemplate.LatestVersionNumber
@@ -52,20 +81,22 @@ Resources:
     Properties:
       GroupDescription: Allow http access to our load balancer
       VpcId:
-        Fn::ImportValue: !Sub "${ExerciseName}-vpc-id"
+        Fn::ImportValue: !Sub "${ExerciseName}-VPCID"
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Subnets:
-        - Fn::ImportValue: !Sub "${ExerciseName}-public-subnet1"
-        - Fn::ImportValue: !Sub "${ExerciseName}-public-subnet2"
+        - Fn::ImportValue: !Sub "${ExerciseName}-PUB1-SN"
+        - Fn::ImportValue: !Sub "${ExerciseName}-PUB2-SN"
       SecurityGroups:
         - Ref: LoadBalancerSecurityGroup
+
   Listener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -88,6 +119,7 @@ Resources:
           Values: [/]
       ListenerArn: !Ref "Listener"
       Priority: 1
+
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -96,9 +128,8 @@ Resources:
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 8
       HealthyThresholdCount: 2
-      Port: 3000
+      Port: 80
       Protocol: HTTP
       UnhealthyThresholdCount: 5
       VpcId:
-        Fn::ImportValue:
-          Fn::Sub: "${ExerciseName}-vpc-id"
+        Fn::ImportValue: !Sub "${ExerciseName}-VPCID"
