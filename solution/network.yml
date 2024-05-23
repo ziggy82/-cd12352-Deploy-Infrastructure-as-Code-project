@@ -1,11 +1,3 @@
-Description: CD12352 - Infrastructure as Code Project - Network
-
-Parameters:
-  # Add your parameters here
-
-Resources:
-  # Add your resources here
-
 Parameters:
   EnvironmentName:
     Description: An environment name that will be prefixed to resource names
@@ -257,3 +249,5 @@ Outputs:
     Value: !Ref PrivateSubnet2
     Export:
       Name: !Sub ${EnvironmentName}-PRI2-SN
+
+

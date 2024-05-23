@@ -1,14 +1,21 @@
 Description: CD12352 - Infrastructure as Code Project - Udagram
 
 Parameters:
-  # Add your parameters here
+  ExerciseName:
+    Type: String
+    Description: Tag name for our resources
+    Default: udacity-lb-exercise
+  AsgDesiredCapacity:
+    Type: String
+    Description: Desired capacity for the fleet of instances
+    Default: 1
 
 Resources:
   # Add your resources here
   # We include a portion of the LaunchTemplate resource so you can use the UserData.
   WebAppLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
-    Properties: 
+    Properties:
       LaunchTemplateData:
         UserData:
           Fn::Base64: |
